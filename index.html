@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cat Tok</title>
+<style>
+body { margin:0; font-family: Arial; text-align:center; background:#f7d7dd; color:#000; }
+body.dark { background:#0b1220; color:#eef6ff; }
+header { padding:10px; background:#ff5c9a; color:white; }
+body.dark header { background:#ff66a3; color:#081426; }
+#controls { margin:10px; }
+#controls button, #controls input { padding:6px 12px; margin:2px; border:none; border-radius:6px; background:#ff5c9a; color:white; cursor:pointer; font-weight:700; }
+body.dark #controls button, body.dark #controls input { background:#ff66a3; color:#081426; }
+#feed { margin-top:10px; }
+.video-card { background:white; margin:10px auto; max-width:350px; border-radius:10px; box-shadow:0 0 8px rgba(0,0,0,0.2); padding:10px; }
+body.dark .video-card { background:#1b2430; box-shadow:0 0 8px rgba(255,255,255,0.1); }
+video { width:100%; border-radius:8px; }
+.likeBtn { background:none; border:none; font-size:18px; cursor:pointer; }
+.commentSection { margin-top:5px; text-align:left; font-size:14px; }
+.commentSection input { width:70%; padding:4px; border-radius:4px; border:1px solid #ccc; }
+.commentSection button { padding:4px 6px; margin-left:4px; border-radius:4px; border:none; background:#ff5c9a; color:white; cursor:pointer; }
+body.dark .commentSection button { background:#ff66a3; color:#081426; }
+</style>
+</head>
+<body>
+
+<header>🐱 Cat Tok</header>
+
+<div id="controls">
+<input type="file" id="videoInput" accept="video/*">
+<button id="postBtn" disabled>Post</button>
+<button id="darkToggle">Dark Mode</button>
+</div>
+
+<div id="feed"></div>
+
+<script>
+const builtInCats = [
+  {url:"https://www.w3schools.com/html/mov_bbb.mp4", title:"Cute Cat 1"},
+  {url:"https://www.w3schools.com/html/movie.mp4", title:"Cute Cat 2"},
+  {url:"https://www.w3schools.com/html/mov_bbb.mp4", title:"Cute Cat 3"}
+];
+
+let uploads = JSON.parse(localStorage.getItem("catTokUploads")||"[]");
+
+// --- Functions
+function saveUploads(){ localStorage.setItem("catTokUploads", JSON.stringify(uploads)); }
+
+function createVideoCard(url,title,isUser){
+  const card = document.createElement('div'); card.className='video-card';
+  const video = document.createElement('video'); video.src=url; video.controls=true; card.appendChild(video);
+  const p = document.createElement('p'); p.textContent = title; card.appendChild(p);
+
+  // Likes
+  const likeBtn = document.createElement('button'); likeBtn.className='likeBtn'; likeBtn.textContent='♡ 0'; let likes=0;
+  likeBtn.addEventListener('click',()=>{ likes++; likeBtn.textContent=`❤️ ${likes}`; });
+  card.appendChild(likeBtn);
+
+  // Comments
+  const csec = document.createElement('div'); csec.className='commentSection';
+  const cinp = document.createElement('input'); cinp.placeholder="Add comment";
+  const cbtn = document.createElement('button'); cbtn.textContent="Post";
+  cbtn.addEventListener('click',()=>{ if(cinp.value.trim()!==""){ const cm=document.createElement('div'); cm.textContent=cinp.value; cm.style.color='white'; csec.appendChild(cm); cinp.value=""; }});
+  csec.appendChild(cinp); csec.appendChild(cbtn); card.appendChild(csec);
+
+  // Delete button for user uploads
+  if(isUser){
+    const delBtn = document.createElement('button'); delBtn.textContent='Delete';
+    delBtn.addEventListener('click',()=>{
+      card.remove();
+      uploads = uploads.filter(u=>u!==url);
+      saveUploads();
+    });
+    card.appendChild(delBtn);
+  }
+
+  return card;
+}
+
+function loadFeed(){
+  const feed = document.getElementById('feed'); feed.innerHTML='';
+  // User uploads first
+  uploads.forEach(u=>{ feed.appendChild(createVideoCard(u,"Your Upload",true)); });
+  builtInCats.forEach(c=>{ feed.appendChild(createVideoCard(c.url,c.title,false)); });
+}
+
+// --- File upload
+const videoInput = document.getElementById('videoInput');
+const postBtn = document.getElementById('postBtn');
+let selectedFile=null;
+
+videoInput.addEventListener('change',()=>{ selectedFile=videoInput.files[0]; postBtn.disabled=!selectedFile; });
+
+postBtn.addEventListener('click',()=>{
+  if(!selectedFile) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const url = e.target.result;
+    uploads.unshift(url); saveUploads();
+    const feed = document.getElementById('feed');
+    const card = createVideoCard(url,"Your Upload",true);
+    feed.insertBefore(card, feed.firstChild);
+    selectedFile=null; videoInput.value=""; postBtn.disabled=true;
+    card.scrollIntoView({behavior:'smooth'});
+  };
+  reader.readAsDataURL(selectedFile);
+});
+
+// --- Dark mode
+document.getElementById('darkToggle').addEventListener('click',()=>{ document.body.classList.toggle('dark'); });
+
+// --- Auto-play videos in view
+const observer = new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    const vid=entry.target;
+    if(entry.isIntersecting){ vid.play(); } else { vid.pause(); }
+  });
+},{threshold:0.7});
+
+function observeVideos(){ document.querySelectorAll('video').forEach(v=>observer.observe(v)); }
+
+window.addEventListener('load',()=>{ loadFeed(); observeVideos(); });
+</script>
+
+</body>
+</html>
